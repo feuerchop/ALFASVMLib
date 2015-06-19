@@ -21,20 +21,22 @@
 % Copyright 2014-07 Huang Xiao and Battista Biggio.
 %
 
-function oneClass_exp1(pattern, ker)
-    data_root = './datasets/';
-    load([data_root, pattern]);
-    X = data(:, 1:end-1);
-    Y = data(:, end);
-    cvp = cvpartition(length(Y), 'holdout', 0.8);
-    Xtr = X(cvp.training, :);
-    Ytr = Y(cvp.training, :);
-    Xtt = X(cvp.test, :);
-    Ytt = Y(cvp.test, :);
+function oneClass_exp1(ker)
+    n=800; m=200;
+    %genarate the data
+    X = genRingData(n, m);
+    Y = ones(n+m,1);
+    Y(1:n) = -1;
+
+    Xtr = [X(1:400, :); X(801:900, :)];
+    Ytr = [Y(1:400); Y(801:900)];
+    Xtt = [X(401:800, :); X(901:1000, :)];
+    Ytt = [Y(401:800); Y(901:1000)];
+
     perf = CPerfEval();
-    perf.setCriterion('accuracy');
+    perf.setCriterion('f_measure');
     % plot original data
-    ax=subplot(191); 
+    ax=subplot(2, 1, 1); 
     hold(ax, 'on');
     axis(ax, 'square');
     box(ax, 'on');
@@ -43,11 +45,13 @@ function oneClass_exp1(pattern, ker)
     plot(ax, X(Y==-1, 1), X(Y==-1, 2), 'b.','MarkerSize',8);
     title(ax, 'Original Data')
     % plot SVM classifier on untainted data
-    mySVM = CClassifierSVM(ker, 'C', 1, 'gamma', 0.5, 'one_class', true);
+    mySVM = CClassifierSVM(ker, 'C', 1, 'gamma', 0.05, 'one_class', true, 'nu', 0.001);
     mySVM.train(Ytr, Xtr);
     yc = mySVM.classify(Xtt);
-    err = 1-perf.performance(Ytt, yc);
-    ax=subplot(192);
+    err = perf.performance(Ytt, yc);
+    c = sum(yc==-1)
+    o = sum(yc==1)
+    ax=subplot(2, 1, 2);
     hold(ax, 'on');
     axis(ax, 'square');
     box(ax, 'on');
@@ -55,25 +59,9 @@ function oneClass_exp1(pattern, ker)
     mySVM.plot(Ytr, Xtr, 'pointSize', 0, ...
                          'svSize',0, ...
                          'background', 1, ...
-                         'title', [num2str(100*err),'%'], ...
+                         'title', [num2str(err),'%'], ...
                          'xLabel', mySVM.name);
-    % start ALFA attack and plot tainted SVM   
-    myAlfa = CAttackerSVMAlfa(ker, 'C', 1, 'gamma', 0.5, 'one_class', true);
-    myAlfa.train(Ytr, Xtr);
-    myAlfa.flipLabels(Ytr, Xtr);
-    yc = myAlfa.classify(Xtt);
-    err = 1-perf.performance(Ytt, yc);
-    ax=subplot(193);
-    hold(ax, 'on');
-    axis(ax, 'square');
-    box(ax, 'on');
-    set(ax, 'XTick', [], 'YTick', []);
-    myAlfa.plot(Xtr, 'pointSize', 0, ...
-                         'svSize',0, ...
-                         'background', 1, ...
-                         'title', [num2str(100*err),'%'], ...
-                         'xLabel', myAlfa.name);
-               
+           
 end
 
-% e.g., paper_exp1('parabolic', 'linear'), paper_exp1('linear', 'rbf')
+% e.g., paper_exp1('rbf')

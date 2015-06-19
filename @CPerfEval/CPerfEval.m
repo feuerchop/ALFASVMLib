@@ -19,7 +19,7 @@ classdef CPerfEval < handle
     end
     
     properties (Constant)
-        SUPPORTED_CRITERION = {'accuracy', 'auc', 'pauc', 'tp_at_fp', 'eer'};
+        SUPPORTED_CRITERION = {'accuracy', 'auc', 'pauc', 'tp_at_fp', 'eer', 'f_measure'};
     end
         
     methods
@@ -61,6 +61,9 @@ classdef CPerfEval < handle
                 case 'eer'
                     [fp tp] = obj.ROC(y,score);
                     perf = obj.EER(fp,tp);
+               case 'f_measure'
+                    [f_measure, precision, recall, specificity, accuracy] = obj.F_measure(y,score);
+                    perf = f_measure;
             end
            
         end
@@ -75,6 +78,27 @@ classdef CPerfEval < handle
         %zero-one loss (threshold = 0)
         function err=zero_one_loss(y,score)
            err=sum((2*(score>=0)-1)~=y)/numel(y); 
+        end
+        function [f_measure, precision, recall, specificity, accuracy]= F_measure(y,score)
+            idx = (y()==1);
+
+            p = length(y(idx));
+            n = length(y(~idx));
+            N = p+n;
+
+            tp = sum(y(idx)==score(idx));
+            tn = sum(y(~idx)==score(~idx));
+            fp = n-tn;
+            fn = p-tp;
+
+            tp_rate = tp/p;
+            tn_rate = tn/n;
+
+            accuracy = (tp+tn)/N;
+            precision = tp/(tp+fp);
+            recall = tp_rate;
+            specificity = tn_rate;
+            f_measure = 2*((precision*recall)/(precision + recall));
         end
         function [fp tp th] = ROC(y,score)
             
